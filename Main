@@ -1,0 +1,56 @@
+// For telegram Notification================
+add_action('woocommerce_checkout_update_order_meta', 'send_order_to_telegram_after_save', 20, 1);
+
+function send_order_to_telegram_after_save($order_id) {
+    send_order_to_telegram($order_id);
+}
+
+function send_order_to_telegram($order_id) {
+    $order = wc_get_order($order_id);
+    if (!$order) return;
+
+    // Telegram bot credentials
+    $bot_token = 'Use Api token here ;
+    $chat_id = 'use chat id here';
+
+    // Get currency and total
+    $currency_symbol = get_woocommerce_currency_symbol($order->get_currency());
+    $total = number_format((float) $order->get_total(), 2);
+
+    // Start building message
+    $message  = "🛒 New Order Received #" . $order->get_order_number() . "\n";
+    $message .= "👤 Customer: " . $order->get_billing_first_name() . ' ' . $order->get_billing_last_name() . "\n";
+    $message .= "📞 Phone: " . $order->get_billing_phone() . "\n";
+    $message .= "📍 Address: " . $order->get_billing_address_1();
+    $message .= $order->get_billing_city() ? ', ' . $order->get_billing_city() : '';
+    $message .= "\n";
+   
+
+    $message .= "📦 Products:\n";
+
+    $item_total = 0;
+    foreach ($order->get_items() as $item) {
+        $name  = $item->get_name();
+        $qty   = $item->get_quantity();
+        $price = $item->get_total();
+        $item_total += $price;
+
+        $message .= "- {$name} x {$qty} = " . number_format($price, 2);
+    }
+
+    $message .= "\n🧾 Subtotal: " . number_format($item_total, 2);
+   $message .= "\n";
+    $message .= "💰 Total: {$total}";
+    // Telegram API call
+    $api_url = "https://api.telegram.org/bot{$bot_token}/sendMessage";
+
+    $args = [
+        'body' => [
+            'chat_id' => $chat_id,
+            'text' => $message,
+            'parse_mode' => 'Markdown'
+        ]
+    ];
+
+   wp_remote_post($api_url, $args);
+}
